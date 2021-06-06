@@ -11,16 +11,22 @@ matplotlib.use('TkAgg') # you need this if you are on MacOS
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 class SetOfParliamentMember:
+    ALL_REGISTERED_PARTIES = [] # This is a class attribute
+
     def __init__(self, name):
         self.name = name
 
     def data_from_csv(self, csv_file):
-        lg.info("Opening data file {}".format(csv_file))
         self.dataframe = pd.read_csv(csv_file, sep=";")
+        parties = self.dataframe["parti_ratt_financier"].dropna().values
+        self._register_parties(parties)
 
     def data_from_dataframe(self, dataframe):
         self.dataframe = dataframe
+        parties = self.dataframe["parti_ratt_financier"].dropna().values
+        self._register_parties(parties)
 
     def display_chart(self):
         data = self.dataframe
@@ -37,10 +43,10 @@ class SetOfParliamentMember:
         fig, ax = plt.subplots()
         ax.axis("equal")
         ax.pie(
-                proportions,
-                labels=labels,
-                autopct="%1.1f%%"
-                )
+            proportions,
+            labels=labels,
+            autopct="%1.1f%%"
+        )
         plt.title("{} ({} MPs)".format(self.name, nb_mps))
         plt.show()
 
@@ -60,13 +66,13 @@ class SetOfParliamentMember:
         return result
 
     def __str__(self):
-        names = [] ## todo: remplacer a la fin par une comprehension
+        names = [] ## todo: remplacer à la fin par une compréhension
         for row_index, mp in self.dataframe.iterrows(): ##todo: ici il y a du packing/unpacking
             names += [mp.nom]
         return str(names) # Python knows how to convert a list into a string
 
     def __repr__(self):
-        return "SetOfParliamentMember: {} members".format(len(self.dataframe))
+        return "Set of {} MPs".format(len(self.dataframe))
 
     def __len__(self):
         return self.number_of_mps
@@ -75,6 +81,7 @@ class SetOfParliamentMember:
         return mp_name in self.dataframe["nom"].values
 
     def __getitem__(self, index):
+        index = int(index)
         try:
             result = dict(self.dataframe.iloc[index])
         except:
@@ -98,7 +105,7 @@ class SetOfParliamentMember:
         s.data_from_dataframe(df)
         return s
 
-    def __radd__(self, other): ## todo: l'implementation de cette methode ne suit a mon avis pas les bonnes pratiques
+    def __radd__(self, other): ## todo: l'implementation de cette méthode ne suit à mon avis pas les bonnes pratiques
         return self
 
     def __lt__(self, other):
@@ -107,17 +114,36 @@ class SetOfParliamentMember:
     def __gt__(self, other):
         return self.number_of_mps > other.number_of_mps
 
-    # The following 2 methods are a way to simulate a calculated attribute
-    # (attribute 'number_of_mps' is calculated from attribute 'seld.dataframe')
-    # There is a much better way to do it, using decorator '@property'
-    def __getattr__(self, attr):
-        if attr == "number_of_mps": ##todo: faire la version avec @property
-            return len(self.dataframe)
+    @property
+    def number_of_mps(self):
+        return len(self.dataframe)
 
-    def __setattr__(self, attr, value):
-        if attr == "number_of_mps":
-            raise Exception("You can not set the number of MPs!")
-        self.__dict__[attr] = value ## todo: c'est l'occasion de parler de __dict__ dans le cours ;)
+    @number_of_mps.setter
+    def number_of_mps(self, value):
+        raise Exception("You can not set the number of MPs!")
+
+    @classmethod
+    def _register_parties(cl, parties):
+        cl.ALL_REGISTERED_PARTIES = cl._group_two_lists_of_parties(cl.ALL_REGISTERED_PARTIES, list(parties))
+
+    @classmethod
+    def get_all_registered_parties(cl):
+        return cl.ALL_REGISTERED_PARTIES
+
+    @staticmethod
+    def _group_two_lists_of_parties(original, new):
+        return list(set(original + new)) # This line drop duplicates in the list 'original + new'
+
+    def number_mp_by_party(self):
+        data = self.dataframe
+
+        result = {}
+        for party in self.get_all_registered_parties():
+            mps_of_this_party = data[data["parti_ratt_financier"] == party]
+            result[party] = len(mps_of_this_party)
+
+        return result
+
 
 def launch_analysis(data_file,
                     by_party = False, info = False, displaynames = False,
@@ -153,7 +179,7 @@ def launch_analysis(data_file,
         groupfirst = int(groupfirst)
         parties = sopm.split_by_political_party()
         parties = parties.values()
-        parties_by_size = sorted(parties, reverse = True)
+        parties_by_size = sorted(parties, reverse=True)
 
         print()
         print("Info: the {} biggest groups are :".format(groupfirst))
@@ -163,6 +189,7 @@ def launch_analysis(data_file,
         s = sum(parties_by_size[0:groupfirst])
 
         s.display_chart()
+
 
 if __name__ == "__main__":
     launch_analysis('current_mps.csv')
