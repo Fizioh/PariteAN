@@ -49,6 +49,7 @@ class SetOfParliamentMember:
         )
         plt.title("{} ({} MPs)".format(self.name, nb_mps))
         plt.show()
+        
 
     def split_by_political_party(self):
         result = {}
